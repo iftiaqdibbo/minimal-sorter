@@ -1,0 +1,64 @@
+# minimal-sorter
+
+A minimal Windows app that sorts the loose files in a folder into subfolders
+based on file type. Built with Rust and Tauri — a single small executable, no
+installation required.
+
+## Features
+
+- Pick a folder, click **Sort files**, done
+- Sorts into ready-made groups for common file types:
+  **Documents**, **Images**, **Audio**, **Video**, **Archives**,
+  **Applications**, **Code**, and **Fonts**
+- Create your own groups: map any extensions to a folder of your choice
+- Custom groups override the defaults and are remembered between launches
+- Existing subfolders are never touched
+- If a file name already exists in its target folder, the move is skipped and reported
+- Simple, minimal UI that follows the system light/dark theme
+
+## Requirements
+
+- Windows 10 or 11 (the WebView2 runtime is preinstalled on virtually all
+  current Windows machines)
+- Nothing to install — download the executable and run it
+
+## Usage
+
+1. Download the latest `minimal-sorter.exe` from the Releases page.
+2. Double-click it.
+3. Click **Browse**, select the folder you want to sort.
+4. Click **Sort files**.
+
+Optionally, add custom groups first (see below).
+
+## How sorting works
+
+| Example file        | Ends up in            |
+| ------------------- | --------------------- |
+| `report.pdf`        | `Documents/report.pdf` |
+| `photo.jpg`         | `Images/photo.jpg`     |
+| `song.mp3`          | `Audio/song.mp3`       |
+| `app.zip`           | `Archives/app.zip`     |
+| `script.py`         | `Code/script.py`       |
+| `weird.xyzq`        | `xyzq/weird.xyzq`      |
+| `README` (no ext.)  | `no_extension/README`  |
+
+- Files whose extension matches no group go into a folder named after the
+  extension itself.
+- Subfolders inside the selected folder are left completely untouched.
+
+## Custom groups
+
+Use the **Custom groups** section in the app:
+
+1. Enter a folder name (e.g. `Reports`).
+2. Enter the extensions, comma-separated (e.g. `pdf, docx`).
+3. Click **Add group**.
+
+The rule is applied the next time you sort. Your groups are stored in
+`%APPDATA%\dev.minimal-sorter.app\groups.json` and survive restarts.
+
+## Downloads
+
+Prebuilt binaries are published with each GitHub release — pick the latest
+`minimal-sorter.exe`.

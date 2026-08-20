@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>File Sorter</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <main>
+    <h1>File Sorter</h1>
+    <div class="row">
+      <input id="path" type="text" placeholder="Choose a folder..." readonly />
+      <button id="browse" type="button">Browse</button>
+    </div>
+    <button id="sort" type="button" disabled>Sort files</button>
+
+    <section>
+      <h2>Custom groups</h2>
+      <p class="hint">
+        By default files go into Documents, Images, Audio, Video, Archives,
+        Applications, Code and Fonts. Add your own folders below to override or
+        extend those rules.
+      </p>
+      <div class="row">
+        <input id="group-name" type="text" placeholder="Folder name" />
+        <input id="group-exts" type="text" placeholder="Extensions, e.g. pdf, docx" />
+      </div>
+      <button id="add-group" type="button">Add group</button>
+      <ul id="groups"></ul>
+    </section>
+
+    <p id="status"></p>
+  </main>
+  <script src="main.js"></script>
+</body>
+</html>
