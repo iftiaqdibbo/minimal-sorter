@@ -28,17 +28,28 @@ fn config_file(app: &tauri::AppHandle) -> Result<PathBuf, String> {
 }
 
 #[tauri::command]
-fn load_groups(app: tauri::AppHandle) -> Vec<CustomGroup> {
-    let Ok(file) = config_file(&app) else {
-        return Vec::new();
-    };
+fn load_groups(app: tauri::AppHandle) -> Result<Vec<CustomGroup>, String> {
+    let file = config_file(&app)?;
     if !file.exists() {
-        return Vec::new();
+        return Ok(Vec::new());
     }
-    std::fs::read_to_string(file)
-        .ok()
-        .and_then(|s| serde_json::from_str(&s).ok())
-        .unwrap_or_default()
+    let content =
+        std::fs::read_to_string(&file).map_err(|e| format!("Cannot read groups file: {e}"))?;
+    match serde_json::from_str::<Vec<CustomGroup>>(&content) {
+        Ok(groups) => Ok(groups),
+        Err(e) => {
+            let backup = file.with_extension("json.bak");
+            let _ = std::fs::remove_file(&backup);
+            if std::fs::rename(&file, &backup).is_ok() {
+                Err(format!(
+                    "Saved groups could not be read ({e}). The old file was kept as {}.",
+                    backup.display()
+                ))
+            } else {
+                Err(format!("Saved groups could not be read ({e})."))
+            }
+        }
+    }
 }
 
 #[tauri::command]

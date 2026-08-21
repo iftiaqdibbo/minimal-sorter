@@ -21,15 +21,17 @@
         Applications, Code and Fonts. Add your own folders below to override or
         extend those rules.
       </p>
-      <div class="row">
-        <input id="group-name" type="text" placeholder="Folder name" />
-        <input id="group-exts" type="text" placeholder="Extensions, e.g. pdf, docx" />
-      </div>
-      <button id="add-group" type="button">Add group</button>
+      <form id="add-group-form">
+        <div class="row">
+          <input id="group-name" type="text" placeholder="Folder name" />
+          <input id="group-exts" type="text" placeholder="Extensions, e.g. pdf, docx" />
+        </div>
+        <button id="add-group" type="submit" disabled>Add group</button>
+      </form>
       <ul id="groups"></ul>
     </section>
 
-    <p id="status"></p>
+    <p id="status" aria-live="polite"></p>
   </main>
   <script src="main.js"></script>
 </body>

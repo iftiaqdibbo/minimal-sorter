@@ -5,8 +5,9 @@ use std::path::Path;
 #[derive(Debug, serde::Serialize)]
 pub struct SortReport {
     pub files_sorted: usize,
-    pub folders_created: Vec<String>,
+    pub folders_used: Vec<String>,
     pub skipped: Vec<String>,
+    pub failed: Vec<String>,
 }
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
@@ -105,13 +106,18 @@ pub fn sort_files_in_dir(dir: &Path, custom_groups: &[CustomGroup]) -> Result<So
         if path.is_dir() {
             continue;
         }
+        let name = entry.file_name().to_string_lossy().to_lowercase();
+        if name == "desktop.ini" || name == "thumbs.db" {
+            continue;
+        }
         files.push(path);
     }
 
     let mut report = SortReport {
         files_sorted: 0,
-        folders_created: Vec::new(),
+        folders_used: Vec::new(),
         skipped: Vec::new(),
+        failed: Vec::new(),
     };
 
     for path in files {
@@ -127,10 +133,9 @@ pub fn sort_files_in_dir(dir: &Path, custom_groups: &[CustomGroup]) -> Result<So
         };
 
         let target_dir = dir.join(&folder_name);
-        if !target_dir.exists() {
-            fs::create_dir(&target_dir)
-                .map_err(|e| format!("Cannot create folder '{}': {e}", target_dir.display()))?;
-            report.folders_created.push(folder_name);
+        if !target_dir.exists() && fs::create_dir(&target_dir).is_err() {
+            report.failed.push(path.display().to_string());
+            continue;
         }
 
         let dest = target_dir.join(path.file_name().expect("file name"));
@@ -139,8 +144,14 @@ pub fn sort_files_in_dir(dir: &Path, custom_groups: &[CustomGroup]) -> Result<So
             continue;
         }
 
-        fs::rename(&path, &dest)
-            .map_err(|e| format!("Cannot move '{}': {e}", path.display()))?;
+        if fs::rename(&path, &dest).is_err() {
+            report.failed.push(path.display().to_string());
+            continue;
+        }
+
+        if !report.folders_used.contains(&folder_name) {
+            report.folders_used.push(folder_name);
+        }
         report.files_sorted += 1;
     }
 
@@ -175,7 +186,7 @@ mod tests {
         let report = sort_files_in_dir(&dir, &[]).unwrap();
 
         assert_eq!(report.files_sorted, 3);
-        assert_eq!(report.folders_created.len(), 3);
+        assert_eq!(report.folders_used.len(), 3);
         assert!(dir.join("Documents").join("report.pdf").exists());
         assert!(dir.join("Images").join("photo.jpg").exists());
         assert!(dir.join("Audio").join("song.mp3").exists());
@@ -268,7 +279,68 @@ mod tests {
 
         assert_eq!(report.files_sorted, 0);
         assert_eq!(report.skipped.len(), 1);
+        assert!(report.folders_used.is_empty());
         assert_eq!(fs::read_to_string(out.join("a.xyzq")).unwrap(), "old");
+        fs::remove_dir_all(&dir).unwrap();
+    }
+
+    #[test]
+    fn ignores_windows_system_files() {
+        let dir = setup();
+        fs::write(dir.join("desktop.ini"), "a").unwrap();
+        fs::write(dir.join("Thumbs.DB"), "b").unwrap();
+        fs::write(dir.join("note.txt"), "c").unwrap();
+
+        let report = sort_files_in_dir(&dir, &[]).unwrap();
+
+        assert_eq!(report.files_sorted, 1);
+        assert!(report.skipped.is_empty());
+        assert!(report.failed.is_empty());
+        assert!(dir.join("desktop.ini").exists());
+        assert!(dir.join("Thumbs.DB").exists());
+        assert!(!dir.join("no_extension").exists());
+        fs::remove_dir_all(&dir).unwrap();
+    }
+
+    #[test]
+    fn failed_moves_do_not_abort_the_sort() {
+        let dir = setup();
+        fs::write(dir.join("no_extension"), "blocker").unwrap();
+        fs::write(dir.join("song.mp3"), "b").unwrap();
+
+        let report = sort_files_in_dir(&dir, &[]).unwrap();
+
+        assert_eq!(report.files_sorted, 1);
+        assert_eq!(report.failed.len(), 1);
+        assert!(!dir.join("no_extension").is_dir());
+        assert!(dir.join("Audio").join("song.mp3").exists());
+        assert_eq!(report.folders_used, vec!["Audio".to_string()]);
+        fs::remove_dir_all(&dir).unwrap();
+    }
+
+    #[test]
+    fn folders_used_counts_existing_folders() {
+        let dir = setup();
+        fs::create_dir(dir.join("Images")).unwrap();
+        fs::write(dir.join("photo.jpg"), "a").unwrap();
+
+        let report = sort_files_in_dir(&dir, &[]).unwrap();
+
+        assert_eq!(report.files_sorted, 1);
+        assert_eq!(report.folders_used, vec!["Images".to_string()]);
+        fs::remove_dir_all(&dir).unwrap();
+    }
+
+    #[test]
+    fn resorting_moves_nothing() {
+        let dir = setup();
+        fs::write(dir.join("photo.jpg"), "a").unwrap();
+        sort_files_in_dir(&dir, &[]).unwrap();
+
+        let report = sort_files_in_dir(&dir, &[]).unwrap();
+
+        assert_eq!(report.files_sorted, 0);
+        assert!(report.folders_used.is_empty());
         fs::remove_dir_all(&dir).unwrap();
     }
 }

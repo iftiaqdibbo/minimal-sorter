@@ -24,6 +24,7 @@ body {
   background: var(--bg);
   color: var(--fg);
   user-select: none;
+  overflow-y: auto;
 }
 
 main {

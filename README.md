@@ -13,7 +13,10 @@ installation required.
 - Create your own groups: map any extensions to a folder of your choice
 - Custom groups override the defaults and are remembered between launches
 - Existing subfolders are never touched
+- Windows system files (`desktop.ini`, `Thumbs.db`) are left alone
 - If a file name already exists in its target folder, the move is skipped and reported
+- Files that cannot be moved (for example, open in another app) are reported
+  and the rest of the folder is still sorted
 - Simple, minimal UI that follows the system light/dark theme
 
 ## Requirements
@@ -56,7 +59,9 @@ Use the **Custom groups** section in the app:
 3. Click **Add group**.
 
 The rule is applied the next time you sort. Your groups are stored in
-`%APPDATA%\dev.minimal-sorter.app\groups.json` and survive restarts.
+`%APPDATA%\dev.minimal-sorter.app\groups.json` and survive restarts. If that
+file ever becomes unreadable, the app keeps a copy as `groups.json.bak` and
+starts fresh instead of silently overwriting it.
 
 ## Downloads
 
