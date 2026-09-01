@@ -83,6 +83,11 @@ browseBtn.addEventListener("click", async () => {
       pathInput.value = picked;
       sortBtn.disabled = false;
       setStatus("");
+      try {
+        await invoke("save_last_path", { path: picked });
+      } catch {
+        // Remembering the folder is a convenience, not a hard requirement.
+      }
     }
   } catch (err) {
     setStatus("Error: " + err);
@@ -161,4 +166,15 @@ sortBtn.addEventListener("click", async () => {
   }
   renderGroups();
   updateAddButton();
+
+  try {
+    const lastPath = await invoke("load_last_path");
+    if (lastPath) {
+      selectedPath = lastPath;
+      pathInput.value = lastPath;
+      sortBtn.disabled = false;
+    }
+  } catch {
+    // Remembering the last folder is a convenience; skip if it fails.
+  }
 })();

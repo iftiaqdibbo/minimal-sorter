@@ -12,6 +12,7 @@ installation required.
   **Applications**, **Code**, and **Fonts**
 - Create your own groups: map any extensions to a folder of your choice
 - Custom groups override the defaults and are remembered between launches
+- The last folder you picked is remembered and pre-selected the next time you open the app
 - Existing subfolders are never touched
 - Windows system files (`desktop.ini`, `Thumbs.db`) are left alone
 - If a file name already exists in its target folder, the move is skipped and reported
@@ -31,6 +32,9 @@ installation required.
 2. Double-click it.
 3. Click **Browse**, select the folder you want to sort.
 4. Click **Sort files**.
+
+The last folder you picked is remembered between launches, so next time it is
+already shown and ready to sort.
 
 Optionally, add custom groups first (see below).
 
@@ -59,7 +63,8 @@ Use the **Custom groups** section in the app:
 3. Click **Add group**.
 
 The rule is applied the next time you sort. Your groups are stored in
-`%APPDATA%\dev.minimal-sorter.app\groups.json` and survive restarts. If that
+`%APPDATA%\dev.minimal-sorter.app\groups.json` and survive restarts. The last
+folder you picked is stored in `last-path.json` in the same directory. If that
 file ever becomes unreadable, the app keeps a copy as `groups.json.bak` and
 starts fresh instead of silently overwriting it.
 

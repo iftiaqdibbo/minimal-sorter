@@ -59,13 +59,46 @@ fn save_groups(app: tauri::AppHandle, groups: Vec<CustomGroup>) -> Result<(), St
     std::fs::write(file, json).map_err(|e| format!("Cannot save groups: {e}"))
 }
 
+fn last_path_file(app: &tauri::AppHandle) -> Result<PathBuf, String> {
+    let dir = app
+        .path()
+        .app_config_dir()
+        .map_err(|e| format!("Cannot resolve config directory: {e}"))?;
+    std::fs::create_dir_all(&dir)
+        .map_err(|e| format!("Cannot create config directory: {e}"))?;
+    Ok(dir.join("last-path.json"))
+}
+
+#[tauri::command]
+fn load_last_path(app: tauri::AppHandle) -> Option<String> {
+    let file = last_path_file(&app).unwrap_or_else(|_| PathBuf::new());
+    if !file.exists() {
+        return None;
+    }
+    let content = std::fs::read_to_string(&file).unwrap_or_else(|_| String::new());
+    let path = content.trim();
+    if path.is_empty() {
+        None
+    } else {
+        Some(path.to_owned())
+    }
+}
+
+#[tauri::command]
+fn save_last_path(app: tauri::AppHandle, path: String) -> Result<(), String> {
+    let file = last_path_file(&app)?;
+    std::fs::write(file, path).map_err(|e| format!("Cannot save last path: {e}"))
+}
+
 pub fn run() {
     tauri::Builder::default()
         .invoke_handler(tauri::generate_handler![
             pick_folder,
             sort_files,
             load_groups,
-            save_groups
+            save_groups,
+            load_last_path,
+            save_last_path
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
