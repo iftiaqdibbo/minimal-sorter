@@ -6,16 +6,18 @@ installation required.
 
 ## Features
 
-- Pick a folder, click **Sort files**, done
+- Pick a folder, **Preview** the moves, then **Sort files**
 - Sorts into ready-made groups for common file types:
   **Documents**, **Images**, **Audio**, **Video**, **Archives**,
   **Applications**, **Code**, and **Fonts**
 - Create your own groups: map any extensions to a folder of your choice
 - Custom groups override the defaults and are remembered between launches
 - The last folder you picked is remembered and pre-selected the next time you open the app
+- Open the selected folder in Explorer with one click
 - Existing subfolders are never touched
 - Windows system files (`desktop.ini`, `Thumbs.db`) are left alone
-- If a file name already exists in its target folder, the move is skipped and reported
+- If a file already exists in its target folder, it is renamed with a number
+  (`report (1).pdf`, `report (2).pdf`, …) — the newest copy keeps its original name
 - Files that cannot be moved (for example, open in another app) are reported
   and the rest of the folder is still sorted
 - Simple, minimal UI that follows the system light/dark theme
@@ -31,7 +33,8 @@ installation required.
 1. Download the latest `minimal-sorter.exe` from the Releases page.
 2. Double-click it.
 3. Click **Browse**, select the folder you want to sort.
-4. Click **Sort files**.
+4. Click **Preview** to see exactly what will move (and what will be renamed).
+5. Click **Sort files**.
 
 The last folder you picked is remembered between launches, so next time it is
 already shown and ready to sort.

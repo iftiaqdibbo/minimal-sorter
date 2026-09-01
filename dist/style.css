@@ -76,8 +76,37 @@ button:disabled {
   cursor: default;
 }
 
+#preview-btn,
 #sort {
-  width: 100%;
+  flex: 1;
+}
+
+#preview-box {
+  margin-top: 10px;
+}
+
+#preview-summary {
+  font-size: 13px;
+  margin: 0 0 8px;
+}
+
+#preview-list {
+  list-style: none;
+  margin: 0;
+  padding: 6px 10px;
+  max-height: 200px;
+  overflow-y: auto;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: 12px;
+}
+
+#preview-list li {
+  padding: 2px 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  user-select: text;
 }
 
 section {

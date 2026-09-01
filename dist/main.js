@@ -2,6 +2,8 @@ const { invoke } = window.__TAURI__.core;
 
 const pathInput = document.getElementById("path");
 const browseBtn = document.getElementById("browse");
+const openBtn = document.getElementById("open");
+const previewBtn = document.getElementById("preview-btn");
 const sortBtn = document.getElementById("sort");
 const groupForm = document.getElementById("add-group-form");
 const groupNameInput = document.getElementById("group-name");
@@ -9,6 +11,10 @@ const groupExtsInput = document.getElementById("group-exts");
 const addGroupBtn = document.getElementById("add-group");
 const groupsList = document.getElementById("groups");
 const statusEl = document.getElementById("status");
+const previewBox = document.getElementById("preview-box");
+const previewSummary = document.getElementById("preview-summary");
+const previewList = document.getElementById("preview-list");
+const previewNote = document.getElementById("preview-note");
 
 let selectedPath = null;
 let customGroups = [];
@@ -66,8 +72,22 @@ function renderGroups() {
   }
 }
 
+function clearPreview() {
+  previewBox.hidden = true;
+  previewSummary.textContent = "";
+  previewList.textContent = "";
+  previewNote.textContent = "";
+  sortBtn.disabled = true;
+}
+
+function updateButtons() {
+  openBtn.disabled = !selectedPath;
+  previewBtn.disabled = !selectedPath;
+}
+
 async function persistGroups() {
   renderGroups();
+  clearPreview();
   try {
     await invoke("save_groups", { groups: customGroups });
   } catch (err) {
@@ -81,16 +101,74 @@ browseBtn.addEventListener("click", async () => {
     if (picked) {
       selectedPath = picked;
       pathInput.value = picked;
-      sortBtn.disabled = false;
+      clearPreview();
       setStatus("");
       try {
         await invoke("save_last_path", { path: picked });
       } catch {
         // Remembering the folder is a convenience, not a hard requirement.
       }
+      updateButtons();
     }
   } catch (err) {
     setStatus("Error: " + err);
+  }
+});
+
+openBtn.addEventListener("click", async () => {
+  if (!selectedPath) return;
+  try {
+    await invoke("open_folder", { path: selectedPath });
+  } catch (err) {
+    setStatus("Error: " + err);
+  }
+});
+
+function previewRow(m) {
+  const prefix =
+    selectedPath.endsWith("/") || selectedPath.endsWith("\\")
+      ? selectedPath
+      : selectedPath + "/";
+  const from = m.from.startsWith(prefix) ? m.from.slice(prefix.length) : m.from;
+  const to = m.to.startsWith(prefix) ? m.to.slice(prefix.length) : m.to;
+  return `${from} → ${to}`;
+}
+
+function renderPreview(report) {
+  const cap = 200;
+  const rows = report.moves.map(previewRow);
+  previewList.textContent = "";
+  for (const row of rows.slice(0, cap)) {
+    const li = document.createElement("li");
+    li.textContent = row;
+    previewList.append(li);
+  }
+  previewSummary.textContent =
+    report.moves.length === 0
+      ? "Nothing to move — folder already tidy."
+      : `Will move ${report.moves.length} file(s) into ${report.folders_used.length} folder(s).`;
+  previewNote.textContent =
+    report.renamed.length > 0
+      ? `${report.renamed.length} file(s) will be renamed with a number — the newest keeps the original name.`
+      : "";
+  previewBox.hidden = false;
+}
+
+previewBtn.addEventListener("click", async () => {
+  if (!selectedPath) return;
+  previewBtn.disabled = true;
+  try {
+    const report = await invoke("preview_sort", {
+      path: selectedPath,
+      customGroups,
+    });
+    renderPreview(report);
+    sortBtn.disabled = report.moves.length === 0;
+    setStatus("");
+  } catch (err) {
+    setStatus("Preview failed: " + err);
+  } finally {
+    updateButtons();
   }
 });
 
@@ -144,8 +222,8 @@ sortBtn.addEventListener("click", async () => {
       report.files_sorted === 0
         ? "Folder already tidy."
         : `Moved ${report.files_sorted} file(s) into ${report.folders_used.length} folder(s).`;
-    if (report.skipped.length > 0) {
-      text += ` Skipped ${report.skipped.length} (name already in use).`;
+    if (report.renamed.length > 0) {
+      text += ` Renamed ${report.renamed.length} (newest kept its name).`;
     }
     if (report.failed.length > 0) {
       text += ` ${report.failed.length} file(s) could not be moved.`;
@@ -154,7 +232,7 @@ sortBtn.addEventListener("click", async () => {
   } catch (err) {
     setStatus("Error: " + err);
   } finally {
-    sortBtn.disabled = false;
+    clearPreview();
   }
 });
 
@@ -172,7 +250,7 @@ sortBtn.addEventListener("click", async () => {
     if (lastPath) {
       selectedPath = lastPath;
       pathInput.value = lastPath;
-      sortBtn.disabled = false;
+      updateButtons();
     }
   } catch {
     // Remembering the last folder is a convenience; skip if it fails.

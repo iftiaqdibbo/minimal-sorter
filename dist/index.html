@@ -11,8 +11,17 @@
     <div class="row">
       <input id="path" type="text" placeholder="Choose a folder..." readonly />
       <button id="browse" type="button">Browse</button>
+      <button id="open" type="button" disabled>Open</button>
     </div>
-    <button id="sort" type="button" disabled>Sort files</button>
+    <div class="row">
+      <button id="preview-btn" type="button" disabled>Preview</button>
+      <button id="sort" type="button" disabled>Sort files</button>
+    </div>
+    <div id="preview-box" hidden>
+      <p id="preview-summary"></p>
+      <ul id="preview-list"></ul>
+      <p id="preview-note" class="hint"></p>
+    </div>
 
     <section>
       <h2>Custom groups</h2>

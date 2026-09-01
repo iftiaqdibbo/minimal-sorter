@@ -17,6 +17,33 @@ fn sort_files(path: String, custom_groups: Vec<CustomGroup>) -> Result<sorter::S
     sorter::sort_files_in_dir(Path::new(&path), &custom_groups)
 }
 
+#[tauri::command]
+fn preview_sort(path: String, custom_groups: Vec<CustomGroup>) -> Result<sorter::PreviewReport, String> {
+    sorter::preview_sort_files(Path::new(&path), &custom_groups)
+}
+
+#[tauri::command]
+fn open_folder(path: String) -> Result<(), String> {
+    if !Path::new(&path).is_dir() {
+        return Err(format!("Not a directory: {path}"));
+    }
+    #[cfg(target_os = "windows")]
+    {
+        std::process::Command::new("explorer")
+            .arg(&path)
+            .spawn()
+            .map_err(|e| format!("Cannot open folder: {e}"))?;
+    }
+    #[cfg(not(target_os = "windows"))]
+    {
+        std::process::Command::new("xdg-open")
+            .arg(&path)
+            .spawn()
+            .map_err(|e| format!("Cannot open folder: {e}"))?;
+    }
+    Ok(())
+}
+
 fn config_file(app: &tauri::AppHandle) -> Result<PathBuf, String> {
     let dir = app
         .path()
@@ -95,6 +122,8 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             pick_folder,
             sort_files,
+            preview_sort,
+            open_folder,
             load_groups,
             save_groups,
             load_last_path,
