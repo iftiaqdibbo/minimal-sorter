@@ -15,5 +15,8 @@ release/
 # AI agent documentation (not part of the software)
 AGENTS.md
 
+# Local planning notes (not part of the software)
+ROADMAP.md
+
 # VS Code dev container config (build environment)
 .devcontainer/
