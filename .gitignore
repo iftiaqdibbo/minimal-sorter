@@ -18,5 +18,8 @@ AGENTS.md
 # Local planning notes (not part of the software)
 ROADMAP.md
 
+# AI agent tooling state (not part of the software)
+.freebuff/
+
 # VS Code dev container config (build environment)
 .devcontainer/

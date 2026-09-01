@@ -9,7 +9,8 @@ installation required.
 - Pick a folder, **Preview** the moves, then **Sort files**
 - Sorts into ready-made groups for common file types:
   **Documents**, **Images**, **Audio**, **Video**, **Archives**,
-  **Applications**, **Code**, and **Fonts**
+  **Applications**, **Code**, **Fonts**, **eBooks**, **Subtitles**,
+  **3D-CAD**, **Disk-Images**, **Data**, **Torrents**, and **Logs**
 - Create your own groups: map any extensions to a folder of your choice
 - Custom groups override the defaults and are remembered between launches
 - The last folder you picked is remembered and pre-selected the next time you open the app
@@ -50,6 +51,13 @@ Optionally, add custom groups first (see below).
 | `song.mp3`          | `Audio/song.mp3`       |
 | `app.zip`           | `Archives/app.zip`     |
 | `script.py`         | `Code/script.py`       |
+| `book.mobi`         | `eBooks/book.mobi`     |
+| `movie.srt`         | `Subtitles/movie.srt`  |
+| `model.stl`         | `3D-CAD/model.stl`     |
+| `disk.vmdk`         | `Disk-Images/disk.vmdk`|
+| `data.sqlite`       | `Data/data.sqlite`     |
+| `movie.torrent`     | `Torrents/movie.torrent`|
+| `app.log`           | `Logs/app.log`         |
 | `weird.xyzq`        | `xyzq/weird.xyzq`      |
 | `README` (no ext.)  | `no_extension/README`  |
 

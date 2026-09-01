@@ -125,6 +125,34 @@ pub fn default_groups() -> Vec<(&'static str, &'static [&'static str])> {
             "Fonts",
             &["ttf", "otf", "woff", "woff2", "eot"],
         ),
+        (
+            "eBooks",
+            &["mobi", "azw", "azw3", "fb2", "djvu", "lit"],
+        ),
+        (
+            "Subtitles",
+            &["srt", "ass", "ssa", "sub", "vtt"],
+        ),
+        (
+            "3D-CAD",
+            &["stl", "obj", "fbx", "blend", "3ds", "step", "dxf", "dwg"],
+        ),
+        (
+            "Disk-Images",
+            &["img", "vmdk", "vhd", "vhdx", "qcow2"],
+        ),
+        (
+            "Data",
+            &["db", "sqlite", "mdb", "parquet", "arrow", "hdf"],
+        ),
+        (
+            "Torrents",
+            &["torrent"],
+        ),
+        (
+            "Logs",
+            &["log"],
+        ),
     ]
 }
 
@@ -354,6 +382,30 @@ mod tests {
         assert!(dir.join("Documents").join("report.pdf").exists());
         assert!(dir.join("Images").join("photo.jpg").exists());
         assert!(dir.join("Audio").join("song.mp3").exists());
+        fs::remove_dir_all(&dir).unwrap();
+    }
+
+    #[test]
+    fn new_default_groups_work() {
+        let dir = setup();
+        fs::write(dir.join("book.mobi"), "a").unwrap();
+        fs::write(dir.join("movie.srt"), "b").unwrap();
+        fs::write(dir.join("model.stl"), "c").unwrap();
+        fs::write(dir.join("disk.vmdk"), "d").unwrap();
+        fs::write(dir.join("data.sqlite"), "e").unwrap();
+        fs::write(dir.join("movie.torrent"), "f").unwrap();
+        fs::write(dir.join("app.log"), "g").unwrap();
+
+        let report = sort_files_in_dir(&dir, &[]).unwrap();
+
+        assert_eq!(report.files_sorted, 7);
+        assert!(dir.join("eBooks").join("book.mobi").exists());
+        assert!(dir.join("Subtitles").join("movie.srt").exists());
+        assert!(dir.join("3D-CAD").join("model.stl").exists());
+        assert!(dir.join("Disk-Images").join("disk.vmdk").exists());
+        assert!(dir.join("Data").join("data.sqlite").exists());
+        assert!(dir.join("Torrents").join("movie.torrent").exists());
+        assert!(dir.join("Logs").join("app.log").exists());
         fs::remove_dir_all(&dir).unwrap();
     }
 
