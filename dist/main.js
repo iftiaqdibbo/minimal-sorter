@@ -119,17 +119,18 @@ function clearPreview() {
   previewNote.textContent = "";
   lastPreviewText = "";
   copyPreviewBtn.hidden = true;
-  sortBtn.disabled = true;
 }
 
 function updateButtons() {
   openBtn.disabled = !selectedPath;
   previewBtn.disabled = !selectedPath;
+  sortBtn.disabled = !selectedPath;
 }
 
 async function persistGroups() {
   renderGroups();
   clearPreview();
+  updateButtons();
   try {
     await invoke("save_groups", { groups: customGroups });
   } catch (err) {
@@ -210,7 +211,6 @@ previewBtn.addEventListener("click", async () => {
       excludedExtensions: parseExcluded(),
     });
     renderPreview(report);
-    sortBtn.disabled = report.moves.length === 0;
     setStatus("");
   } catch (err) {
     setStatus("Preview failed: " + err);
@@ -308,6 +308,7 @@ sortBtn.addEventListener("click", async () => {
     setStatus("Error: " + err);
   } finally {
     clearPreview();
+    updateButtons();
   }
 });
 
@@ -325,6 +326,8 @@ undoBtn.addEventListener("click", async () => {
   } catch (err) {
     setStatus("Error: " + err);
     undoBtn.disabled = false;
+  } finally {
+    updateButtons();
   }
 });
 
