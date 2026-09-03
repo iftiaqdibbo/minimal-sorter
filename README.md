@@ -100,3 +100,55 @@ in-progress downloads and temporary files.
 
 Prebuilt binaries are published with each GitHub release — pick the latest
 `minimal-sorter.exe`.
+
+## Building from source
+
+### On Windows (native)
+
+1. Install **Rust** via [rustup.rs](https://rustup.rs).
+2. Install the **WebView2 SDK** (included in the Windows 10/11 SDK). The
+   WebView2 runtime itself is already present on virtually every Windows 10/11
+   machine.
+3. Install the **Tauri CLI**:
+   ```bash
+   cargo install tauri-cli
+   ```
+4. Clone and build:
+   ```bash
+   git clone https://github.com/iftiaqdibbo/minimal-sorter.git
+   cd minimal-sorter/src-tauri
+   cargo tauri build
+   ```
+   The `.exe` will be at `src-tauri/target/release/minimal-sorter.exe`.
+
+No Node.js, no npm — the frontend is plain HTML/CSS/JS embedded at compile
+time.
+
+### Using Docker (cross-compile from Linux)
+
+If you prefer to build the Windows `.exe` without leaving Linux (or your
+Windows machine doesn't have Rust installed), you can cross-compile with
+`xwin`:
+
+1. Install **Docker**.
+2. Set up a cross-compilation environment with `xwin` (caches the Windows CRT
+   and SDK) and `cargo-xwin`. The rough steps:
+   ```dockerfile
+   FROM rust:1
+   RUN rustup target add x86_64-pc-windows-msvc \
+       && cargo install cargo-xwin \
+       && xwin --accept-license --cache-dir /xwin splat
+   ENV XWIN_CACHE_DIR=/xwin
+   ```
+3. Clone and build:
+   ```bash
+   git clone https://github.com/iftiaqdibbo/minimal-sorter.git
+   cd minimal-sorter/src-tauri
+   cargo xwin build --release --target x86_64-pc-windows-msvc
+   ```
+   The `.exe` will be at
+   `target/x86_64-pc-windows-msvc/release/minimal-sorter.exe`.
+
+The WebView2 runtime is **not bundled** — the user running the `.exe` must
+have it (virtually all Windows 10/11 machines do). The `.exe` is unsigned, so
+SmartScreen may show a warning on first run.
