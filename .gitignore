@@ -23,3 +23,6 @@ ROADMAP.md
 
 # VS Code dev container config (build environment)
 .devcontainer/
+
+# Icon source (local only; the generated icons in src-tauri/icons are committed)
+new_icon/

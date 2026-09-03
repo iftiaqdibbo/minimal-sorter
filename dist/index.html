@@ -16,12 +16,26 @@
     <div class="row">
       <button id="preview-btn" type="button" disabled>Preview</button>
       <button id="sort" type="button" disabled>Sort files</button>
+      <button id="undo" type="button" disabled>Undo</button>
+    </div>
+    <div class="row checkbox-row">
+      <label>
+        <input id="remove-empty" type="checkbox" />
+        Remove empty subfolders
+      </label>
     </div>
     <div id="preview-box" hidden>
       <p id="preview-summary"></p>
       <ul id="preview-list"></ul>
       <p id="preview-note" class="hint"></p>
+      <button id="copy-preview" type="button" hidden>Copy list</button>
     </div>
+
+    <section>
+      <h2>Exclude</h2>
+      <p class="hint">Files with these extensions are never moved (e.g. part, tmp, crdownload).</p>
+      <input id="exclude" type="text" placeholder="Extensions to skip, e.g. part, tmp" />
+    </section>
 
     <section>
       <h2>Custom groups</h2>
@@ -36,7 +50,10 @@
           <input id="group-name" type="text" placeholder="Folder name" />
           <input id="group-exts" type="text" placeholder="Extensions, e.g. pdf, docx" />
         </div>
-        <button id="add-group" type="submit" disabled>Add group</button>
+        <div class="row form-actions">
+          <button id="add-group" type="submit" disabled>Add group</button>
+          <button id="cancel-edit" type="button" hidden>Cancel</button>
+        </div>
       </form>
       <ul id="groups"></ul>
     </section>

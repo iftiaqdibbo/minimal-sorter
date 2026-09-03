@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -9,6 +9,7 @@ pub struct SortReport {
     pub folders_used: Vec<String>,
     pub renamed: Vec<String>,
     pub failed: Vec<String>,
+    pub empty_folders_removed: usize,
 }
 
 #[derive(Debug, serde::Serialize)]
@@ -28,6 +29,18 @@ pub struct PreviewReport {
 pub struct CustomGroup {
     pub folder: String,
     pub extensions: Vec<String>,
+}
+
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+pub struct RecordedMove {
+    pub from: String,
+    pub to: String,
+}
+
+#[derive(Debug, serde::Serialize)]
+pub struct UndoReport {
+    pub undone: usize,
+    pub failed: Vec<String>,
 }
 
 struct MoveOp {
@@ -163,10 +176,20 @@ fn normalize_ext(raw: &str) -> String {
 
 /// Computes the collision-free move list. Planning only reads metadata; it
 /// never mutates the directory, so the plan can be shown as a preview.
-fn plan_moves(dir: &Path, custom_groups: &[CustomGroup]) -> Result<Vec<MoveOp>, String> {
+fn plan_moves(
+    dir: &Path,
+    custom_groups: &[CustomGroup],
+    excluded_extensions: &[String],
+) -> Result<Vec<MoveOp>, String> {
     if !dir.is_dir() {
         return Err(format!("Not a directory: {}", dir.display()));
     }
+
+    let excluded: HashSet<String> = excluded_extensions
+        .iter()
+        .map(|e| normalize_ext(e))
+        .filter(|e| !e.is_empty())
+        .collect();
 
     // extension -> folder name. Custom groups override defaults.
     let mut ext_to_folder: HashMap<String, String> = HashMap::new();
@@ -215,6 +238,9 @@ fn plan_moves(dir: &Path, custom_groups: &[CustomGroup]) -> Result<Vec<MoveOp>, 
             .and_then(|e| e.to_str())
             .map(|e| e.to_lowercase())
             .filter(|e| !e.is_empty());
+        if ext.as_ref().map_or(false, |e| excluded.contains(e)) {
+            continue;
+        }
         let folder_name = target_folder_for(&ext, &ext_to_folder);
         let target_dir = dir.join(&folder_name);
         let file_name = path.file_name().expect("file name").to_string_lossy().into_owned();
@@ -259,8 +285,9 @@ fn plan_moves(dir: &Path, custom_groups: &[CustomGroup]) -> Result<Vec<MoveOp>, 
     Ok(moves)
 }
 
-fn apply_moves(moves: &[MoveOp], mut report: SortReport) -> SortReport {
-    for m in moves {
+fn apply_moves(moves: &[MoveOp], mut report: SortReport) -> (SortReport, Vec<usize>) {
+    let mut applied = Vec::new();
+    for (i, m) in moves.iter().enumerate() {
         if let Some(parent) = m.to.parent() {
             if !parent.exists() && fs::create_dir(parent).is_err() {
                 report.failed.push(m.from.display().to_string());
@@ -294,26 +321,45 @@ fn apply_moves(moves: &[MoveOp], mut report: SortReport) -> SortReport {
             report.folders_used.push(folder);
         }
         report.files_sorted += 1;
+        applied.push(i);
     }
-    report
+    (report, applied)
 }
 
-pub fn sort_files_in_dir(dir: &Path, custom_groups: &[CustomGroup]) -> Result<SortReport, String> {
-    let moves = plan_moves(dir, custom_groups)?;
+pub fn sort_files_with_moves(
+    dir: &Path,
+    custom_groups: &[CustomGroup],
+    excluded_extensions: &[String],
+    remove_empty_folders: bool,
+) -> Result<(SortReport, Vec<RecordedMove>), String> {
+    let moves = plan_moves(dir, custom_groups, excluded_extensions)?;
     let report = SortReport {
         files_sorted: 0,
         folders_used: Vec::new(),
         renamed: Vec::new(),
         failed: Vec::new(),
+        empty_folders_removed: 0,
     };
-    Ok(apply_moves(&moves, report))
+    let (mut report, applied) = apply_moves(&moves, report);
+    let recorded = applied
+        .iter()
+        .map(|&i| RecordedMove {
+            from: moves[i].from.display().to_string(),
+            to: moves[i].to.display().to_string(),
+        })
+        .collect();
+    if remove_empty_folders {
+        report.empty_folders_removed = remove_empty_subfolders(dir).unwrap_or(0);
+    }
+    Ok((report, recorded))
 }
 
 pub fn preview_sort_files(
     dir: &Path,
     custom_groups: &[CustomGroup],
+    excluded_extensions: &[String],
 ) -> Result<PreviewReport, String> {
-    let moves = plan_moves(dir, custom_groups)?;
+    let moves = plan_moves(dir, custom_groups, excluded_extensions)?;
     let mut report = PreviewReport {
         moves: Vec::new(),
         folders_used: Vec::new(),
@@ -350,6 +396,50 @@ pub fn preview_sort_files(
     Ok(report)
 }
 
+pub fn remove_empty_subfolders(dir: &Path) -> Result<usize, String> {
+    let entries = fs::read_dir(dir).map_err(|e| format!("Cannot read directory: {e}"))?;
+    let mut subdirs = Vec::new();
+    for entry in entries {
+        let entry = entry.map_err(|e| format!("Cannot read entry: {e}"))?;
+        let path = entry.path();
+        if path.is_dir() {
+            subdirs.push(path);
+        }
+    }
+    let mut removed = 0;
+    for sub in subdirs {
+        let is_empty = fs::read_dir(&sub).map(|mut d| d.next().is_none()).unwrap_or(false);
+        if is_empty && fs::remove_dir(&sub).is_ok() {
+            removed += 1;
+        }
+    }
+    Ok(removed)
+}
+
+pub fn undo_moves(moves: &[RecordedMove]) -> (usize, Vec<RecordedMove>) {
+    let mut undone = 0;
+    let mut failed = Vec::new();
+    for m in moves.iter().rev() {
+        let from = Path::new(&m.from);
+        let to = Path::new(&m.to);
+        if !to.exists() {
+            continue;
+        }
+        if let Some(parent) = from.parent() {
+            if !parent.exists() && fs::create_dir_all(parent).is_err() {
+                failed.push(m.clone());
+                continue;
+            }
+        }
+        if fs::rename(to, from).is_err() {
+            failed.push(m.clone());
+            continue;
+        }
+        undone += 1;
+    }
+    (undone, failed)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -368,6 +458,15 @@ mod tests {
         dir
     }
 
+    fn sort_report(
+        dir: &Path,
+        custom: &[CustomGroup],
+        excluded: &[String],
+        remove_empty: bool,
+    ) -> Result<SortReport, String> {
+        sort_files_with_moves(dir, custom, excluded, remove_empty).map(|(r, _)| r)
+    }
+
     #[test]
     fn uses_default_groups() {
         let dir = setup();
@@ -375,7 +474,7 @@ mod tests {
         fs::write(dir.join("photo.jpg"), "b").unwrap();
         fs::write(dir.join("song.mp3"), "c").unwrap();
 
-        let report = sort_files_in_dir(&dir, &[]).unwrap();
+        let report = sort_report(&dir, &[], &[], false).unwrap();
 
         assert_eq!(report.files_sorted, 3);
         assert_eq!(report.folders_used.len(), 3);
@@ -396,7 +495,7 @@ mod tests {
         fs::write(dir.join("movie.torrent"), "f").unwrap();
         fs::write(dir.join("app.log"), "g").unwrap();
 
-        let report = sort_files_in_dir(&dir, &[]).unwrap();
+        let report = sort_report(&dir, &[], &[], false).unwrap();
 
         assert_eq!(report.files_sorted, 7);
         assert!(dir.join("eBooks").join("book.mobi").exists());
@@ -419,7 +518,7 @@ mod tests {
             folder: "PDFs".to_string(),
             extensions: vec!["pdf".to_string()],
         }];
-        let report = sort_files_in_dir(&dir, &custom).unwrap();
+        let report = sort_report(&dir, &custom, &[], false).unwrap();
 
         assert_eq!(report.files_sorted, 2);
         assert!(dir.join("PDFs").join("report.pdf").exists());
@@ -437,7 +536,7 @@ mod tests {
             folder: "Reading".to_string(),
             extensions: vec![".TXT".to_string(), " epub ".to_string()],
         }];
-        let report = sort_files_in_dir(&dir, &custom).unwrap();
+        let report = sort_report(&dir, &custom, &[], false).unwrap();
 
         assert_eq!(report.files_sorted, 2);
         assert!(dir.join("Reading").join("note.TXT").exists());
@@ -450,7 +549,7 @@ mod tests {
         let dir = setup();
         fs::write(dir.join("weird.xyzq"), "a").unwrap();
 
-        let report = sort_files_in_dir(&dir, &[]).unwrap();
+        let report = sort_report(&dir, &[], &[], false).unwrap();
 
         assert_eq!(report.files_sorted, 1);
         assert!(dir.join("xyzq").join("weird.xyzq").exists());
@@ -462,7 +561,7 @@ mod tests {
         let dir = setup();
         fs::write(dir.join("README"), "a").unwrap();
 
-        let report = sort_files_in_dir(&dir, &[]).unwrap();
+        let report = sort_report(&dir, &[], &[], false).unwrap();
 
         assert_eq!(report.files_sorted, 1);
         assert!(dir.join("no_extension").join("README").exists());
@@ -476,7 +575,7 @@ mod tests {
         fs::create_dir(&sub).unwrap();
         fs::write(sub.join("keep.txt"), "keep").unwrap();
 
-        let report = sort_files_in_dir(&dir, &[]).unwrap();
+        let report = sort_report(&dir, &[], &[], false).unwrap();
 
         assert_eq!(report.files_sorted, 0);
         assert!(sub.join("keep.txt").exists());
@@ -493,7 +592,7 @@ mod tests {
         filetime::set_file_mtime(&existing, filetime::FileTime::from_unix_time(1000, 0)).unwrap();
         fs::write(dir.join("a.xyzq"), "new").unwrap();
 
-        let report = sort_files_in_dir(&dir, &[]).unwrap();
+        let report = sort_report(&dir, &[], &[], false).unwrap();
 
         assert_eq!(report.files_sorted, 2);
         assert_eq!(report.renamed.len(), 1);
@@ -514,7 +613,7 @@ mod tests {
         fs::write(&incoming, "incoming").unwrap();
         filetime::set_file_mtime(&incoming, filetime::FileTime::from_unix_time(1000, 0)).unwrap();
 
-        let report = sort_files_in_dir(&dir, &[]).unwrap();
+        let report = sort_report(&dir, &[], &[], false).unwrap();
 
         assert_eq!(report.files_sorted, 1);
         assert_eq!(report.renamed.len(), 1);
@@ -534,7 +633,7 @@ mod tests {
         filetime::set_file_mtime(&out.join("a (1).xyzq"), filetime::FileTime::from_unix_time(2000, 0)).unwrap();
         fs::write(dir.join("a.xyzq"), "new").unwrap();
 
-        let report = sort_files_in_dir(&dir, &[]).unwrap();
+        let report = sort_report(&dir, &[], &[], false).unwrap();
 
         assert_eq!(report.files_sorted, 2);
         assert_eq!(report.renamed.len(), 1);
@@ -550,7 +649,7 @@ mod tests {
         fs::write(dir.join("report.pdf"), "a").unwrap();
         fs::write(dir.join("photo.jpg"), "b").unwrap();
 
-        let report = preview_sort_files(&dir, &[]).unwrap();
+        let report = preview_sort_files(&dir, &[], &[]).unwrap();
 
         assert_eq!(report.moves.len(), 2);
         assert_eq!(report.folders_used.len(), 2);
@@ -570,7 +669,7 @@ mod tests {
         fs::write(dir.join("Thumbs.DB"), "b").unwrap();
         fs::write(dir.join("note.txt"), "c").unwrap();
 
-        let report = sort_files_in_dir(&dir, &[]).unwrap();
+        let report = sort_report(&dir, &[], &[], false).unwrap();
 
         assert_eq!(report.files_sorted, 1);
         assert!(report.renamed.is_empty());
@@ -587,7 +686,7 @@ mod tests {
         fs::write(dir.join("no_extension"), "blocker").unwrap();
         fs::write(dir.join("song.mp3"), "b").unwrap();
 
-        let report = sort_files_in_dir(&dir, &[]).unwrap();
+        let report = sort_report(&dir, &[], &[], false).unwrap();
 
         assert_eq!(report.files_sorted, 1);
         assert_eq!(report.failed.len(), 1);
@@ -603,7 +702,7 @@ mod tests {
         fs::create_dir(dir.join("Images")).unwrap();
         fs::write(dir.join("photo.jpg"), "a").unwrap();
 
-        let report = sort_files_in_dir(&dir, &[]).unwrap();
+        let report = sort_report(&dir, &[], &[], false).unwrap();
 
         assert_eq!(report.files_sorted, 1);
         assert_eq!(report.folders_used, vec!["Images".to_string()]);
@@ -614,12 +713,124 @@ mod tests {
     fn resorting_moves_nothing() {
         let dir = setup();
         fs::write(dir.join("photo.jpg"), "a").unwrap();
-        sort_files_in_dir(&dir, &[]).unwrap();
+        sort_report(&dir, &[], &[], false).unwrap();
 
-        let report = sort_files_in_dir(&dir, &[]).unwrap();
+        let report = sort_report(&dir, &[], &[], false).unwrap();
 
         assert_eq!(report.files_sorted, 0);
         assert!(report.folders_used.is_empty());
+        fs::remove_dir_all(&dir).unwrap();
+    }
+
+    #[test]
+    fn excluded_extensions_are_not_moved() {
+        let dir = setup();
+        fs::write(dir.join("report.pdf"), "a").unwrap();
+        fs::write(dir.join("temp.part"), "b").unwrap();
+
+        let excluded = vec!["part".to_string()];
+        let report = sort_report(&dir, &[], &excluded, false).unwrap();
+
+        assert_eq!(report.files_sorted, 1);
+        assert!(dir.join("Documents").join("report.pdf").exists());
+        assert!(dir.join("temp.part").exists());
+        fs::remove_dir_all(&dir).unwrap();
+    }
+
+    #[test]
+    fn preview_respects_excluded_extensions() {
+        let dir = setup();
+        fs::write(dir.join("report.pdf"), "a").unwrap();
+        fs::write(dir.join("temp.part"), "b").unwrap();
+
+        let excluded = vec![".PART".to_string()];
+        let report = preview_sort_files(&dir, &[], &excluded).unwrap();
+
+        assert_eq!(report.moves.len(), 1);
+        fs::remove_dir_all(&dir).unwrap();
+    }
+
+    #[test]
+    fn remove_empty_subfolders_removes_only_empty_dirs() {
+        let dir = setup();
+        let empty = dir.join("Empty");
+        let nested = dir.join("HasFiles");
+        fs::create_dir(&empty).unwrap();
+        fs::create_dir(&nested).unwrap();
+        fs::write(nested.join("keep.txt"), "a").unwrap();
+        fs::write(dir.join("loose.txt"), "b").unwrap();
+
+        let removed = remove_empty_subfolders(&dir).unwrap();
+
+        assert_eq!(removed, 1);
+        assert!(!empty.exists());
+        assert!(nested.exists());
+        assert!(dir.join("loose.txt").exists());
+        fs::remove_dir_all(&dir).unwrap();
+    }
+
+    #[test]
+    fn sort_can_remove_empty_subfolders() {
+        let dir = setup();
+        let empty = dir.join("Empty");
+        fs::create_dir(&empty).unwrap();
+        fs::write(dir.join("report.pdf"), "a").unwrap();
+
+        let report = sort_report(&dir, &[], &[], true).unwrap();
+
+        assert_eq!(report.files_sorted, 1);
+        assert_eq!(report.empty_folders_removed, 1);
+        assert!(!empty.exists());
+        fs::remove_dir_all(&dir).unwrap();
+    }
+
+    #[test]
+    fn undo_moves_restores_files_in_reverse() {
+        let dir = setup();
+        let out = dir.join("xyzq");
+        fs::create_dir(&out).unwrap();
+        let existing = out.join("a.xyzq");
+        fs::write(&existing, "old").unwrap();
+        filetime::set_file_mtime(&existing, filetime::FileTime::from_unix_time(1000, 0)).unwrap();
+        fs::write(dir.join("a.xyzq"), "new").unwrap();
+
+        let (_report, moves) = sort_files_with_moves(&dir, &[], &[], false).unwrap();
+        assert_eq!(moves.len(), 2);
+
+        let (undone, failed) = undo_moves(&moves);
+
+        assert_eq!(undone, 2);
+        assert!(failed.is_empty());
+        assert_eq!(fs::read_to_string(dir.join("a.xyzq")).unwrap(), "new");
+        assert_eq!(fs::read_to_string(out.join("a.xyzq")).unwrap(), "old");
+        fs::remove_dir_all(&dir).unwrap();
+    }
+
+    #[test]
+    fn undo_moves_skips_already_missing_targets() {
+        let dir = setup();
+        let moves = vec![RecordedMove {
+            from: dir.join("a.txt").display().to_string(),
+            to: dir.join("Documents").join("a.txt").display().to_string(),
+        }];
+
+        let (undone, failed) = undo_moves(&moves);
+
+        assert_eq!(undone, 0);
+        assert!(failed.is_empty());
+        fs::remove_dir_all(&dir).unwrap();
+    }
+
+    #[test]
+    fn sort_files_with_moves_omits_failed_moves() {
+        let dir = setup();
+        fs::write(dir.join("no_extension"), "blocker").unwrap();
+        fs::write(dir.join("song.mp3"), "b").unwrap();
+
+        let (report, moves) = sort_files_with_moves(&dir, &[], &[], false).unwrap();
+
+        assert_eq!(report.files_sorted, 1);
+        assert_eq!(moves.len(), 1);
         fs::remove_dir_all(&dir).unwrap();
     }
 }

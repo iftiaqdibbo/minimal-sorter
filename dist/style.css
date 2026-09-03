@@ -77,7 +77,8 @@ button:disabled {
 }
 
 #preview-btn,
-#sort {
+#sort,
+#undo {
   flex: 1;
 }
 
@@ -153,4 +154,30 @@ h2 {
   opacity: 0.75;
   margin-top: 14px;
   user-select: text;
+}
+
+.checkbox-row label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+}
+
+input[type="checkbox"] {
+  flex: none;
+}
+
+#exclude {
+  width: 100%;
+}
+
+#copy-preview {
+  margin-top: 8px;
+  padding: 4px 10px;
+  font-size: 12px;
+}
+
+.actions {
+  display: flex;
+  gap: 8px;
 }
