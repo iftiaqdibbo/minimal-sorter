@@ -3,7 +3,12 @@
   --bg: #f5f5f5;
   --fg: #1a1a1a;
   --accent: #2563eb;
+  --accent-hover: #1d4ed8;
   --border: #c9c9c9;
+  --success: #16a34a;
+  --error: #dc2626;
+  --muted: #6b7280;
+  --section-divider: #d4d4d4;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -11,6 +16,8 @@
     --bg: #1a1a1a;
     --fg: #ececec;
     --border: #3d3d3d;
+    --section-divider: #333;
+    --muted: #9ca3af;
   }
 }
 
@@ -37,6 +44,14 @@ h1 {
   font-size: 18px;
   font-weight: 600;
   margin: 0 0 20px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+h1 .icon {
+  font-size: 20px;
+  line-height: 1;
 }
 
 .row {
@@ -45,7 +60,8 @@ h1 {
   margin-bottom: 14px;
 }
 
-input {
+input,
+textarea {
   flex: 1;
   min-width: 0;
   padding: 8px 10px;
@@ -54,6 +70,12 @@ input {
   background: transparent;
   color: inherit;
   font-size: 14px;
+  transition: border-color 0.15s ease;
+}
+
+input:focus {
+  outline: none;
+  border-color: var(--accent);
 }
 
 button {
@@ -64,6 +86,7 @@ button {
   color: inherit;
   font-size: 14px;
   cursor: pointer;
+  transition: border-color 0.15s ease, background-color 0.15s ease, color 0.15s ease, opacity 0.15s ease;
 }
 
 button:hover:not(:disabled) {
@@ -71,23 +94,120 @@ button:hover:not(:disabled) {
   color: var(--accent);
 }
 
+button:active:not(:disabled) {
+  transform: scale(0.97);
+}
+
 button:disabled {
   opacity: 0.45;
   cursor: default;
 }
 
+/* ── Primary action (Sort files) ── */
+.btn-primary {
+  background: var(--accent);
+  color: #fff;
+  border-color: var(--accent);
+  font-weight: 500;
+}
+
+.btn-primary:hover:not(:disabled) {
+  background: var(--accent-hover);
+  border-color: var(--accent-hover);
+  color: #fff;
+}
+
+/* ── Secondary action (Preview) ── */
+.btn-secondary {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.btn-secondary:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
+}
+
+/* ── Preview, Sort, Undo share flex evenly ── */
 #preview-btn,
 #sort,
 #undo {
   flex: 1;
 }
 
+/* ── Folder field (drop target + click to browse) ── */
+.drop-zone {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 16px;
+  margin-bottom: 14px;
+  border: 2px dashed var(--border);
+  border-radius: 10px;
+  cursor: pointer;
+  transition: border-color 0.2s ease, background-color 0.2s ease;
+}
+
+.drop-zone.has-path {
+  border-style: solid;
+}
+
+.drop-zone:focus-visible {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.drop-zone.drag-over {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
+}
+
+.drop-zone .drop-icon {
+  font-size: 28px;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.drop-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
+}
+
+.drop-path {
+  font-size: 13px;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  user-select: text;
+}
+
+.drop-zone .drop-text {
+  font-size: 12px;
+  opacity: 0.65;
+}
+
+.drop-open {
+  flex-shrink: 0;
+  padding: 4px 10px;
+  font-size: 12px;
+}
+
+/* ── Hidden utility ── */
+.hidden {
+  display: none;
+}
+
+/* ── Preview box ── */
 #preview-box {
   margin-top: 10px;
 }
 
 #preview-summary {
   font-size: 13px;
+  font-weight: 500;
   margin: 0 0 8px;
 }
 
@@ -103,13 +223,36 @@ button:disabled {
 }
 
 #preview-list li {
-  padding: 2px 0;
+  padding: 3px 6px;
   word-break: break-all;
   user-select: text;
+  border-radius: 4px;
+  transition: background-color 0.12s ease;
 }
 
+#preview-list li:hover {
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
+}
+
+#preview-list li + li {
+  border-top: 1px solid color-mix(in srgb, var(--border) 40%, transparent);
+}
+
+#preview-note {
+  margin: 8px 0 0;
+}
+
+#copy-preview {
+  margin-top: 8px;
+  padding: 4px 10px;
+  font-size: 12px;
+}
+
+/* ── Sections ── */
 section {
-  margin-top: 22px;
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid var(--section-divider);
 }
 
 h2 {
@@ -120,11 +263,12 @@ h2 {
 
 .hint {
   font-size: 12px;
-  opacity: 0.7;
+  opacity: 0.65;
   margin: 0 0 12px;
   user-select: text;
 }
 
+/* ── Custom groups list ── */
 #groups {
   list-style: none;
   margin: 12px 0 0;
@@ -136,9 +280,20 @@ h2 {
   align-items: center;
   justify-content: space-between;
   gap: 10px;
-  padding: 6px 0;
-  border-bottom: 1px solid var(--border);
+  padding: 8px 8px;
+  border-bottom: 1px solid var(--section-divider);
   font-size: 13px;
+  border-radius: 6px;
+  transition: background-color 0.15s ease;
+}
+
+#groups li:last-child {
+  border-bottom: none;
+}
+
+#groups li.editing {
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
+  border-color: var(--accent);
 }
 
 #groups li button {
@@ -146,36 +301,49 @@ h2 {
   font-size: 12px;
 }
 
-#status {
-  min-height: 18px;
-  font-size: 13px;
-  opacity: 0.75;
-  margin-top: 14px;
-  user-select: text;
+#groups li button:hover:not(:disabled) {
+  border-color: var(--accent);
+  color: var(--accent);
 }
 
+/* ── Status bar ── */
+#status {
+  min-height: 20px;
+  font-size: 13px;
+  margin-top: 14px;
+  user-select: text;
+  transition: color 0.15s ease;
+}
+
+#status.status-ok {
+  color: var(--success);
+}
+
+#status.status-error {
+  color: var(--error);
+}
+
+/* ── Checkbox row ── */
 .checkbox-row label {
   display: flex;
   align-items: center;
   gap: 8px;
   font-size: 13px;
+  cursor: pointer;
 }
 
 input[type="checkbox"] {
   flex: none;
+  accent-color: var(--accent);
+  cursor: pointer;
 }
 
 #exclude {
   width: 100%;
 }
 
-#copy-preview {
-  margin-top: 8px;
-  padding: 4px 10px;
-  font-size: 12px;
-}
-
 .actions {
   display: flex;
   gap: 8px;
+  flex-shrink: 0;
 }

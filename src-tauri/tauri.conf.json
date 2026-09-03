@@ -12,9 +12,10 @@
       {
         "title": "File Sorter",
         "width": 480,
-        "height": 520,
+        "height": 600,
         "resizable": false,
         "center": true,
+        "visible": false,
         "dragDropEnabled": true
       }
     ],

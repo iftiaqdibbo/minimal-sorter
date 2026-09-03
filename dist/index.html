@@ -6,29 +6,38 @@
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-  <main>
-    <h1>File Sorter</h1>
-    <div class="row">
-      <input id="path" type="text" placeholder="Choose a folder..." readonly />
-      <button id="browse" type="button">Browse</button>
-      <button id="open" type="button" disabled>Open</button>
+  <main id="app">
+    <h1><span class="icon">📂</span> File Sorter</h1>
+
+    <!-- Folder field: drop target + click to browse -->
+    <div id="drop-zone" class="drop-zone" role="button" tabindex="0" aria-label="Choose a folder to sort">
+      <span class="drop-icon">📁</span>
+      <div class="drop-info">
+        <span id="drop-path" class="drop-path hidden"></span>
+        <span id="drop-text" class="drop-text">Drop a folder here, or click to browse</span>
+      </div>
+      <button id="open" type="button" class="drop-open hidden">Open</button>
     </div>
+
+    <!-- Action buttons -->
     <div class="row">
-      <button id="preview-btn" type="button" disabled>Preview</button>
-      <button id="sort" type="button" disabled>Sort files</button>
+      <button id="preview-btn" type="button" class="btn-secondary" disabled>Preview</button>
+      <button id="sort" type="button" class="btn-primary" disabled>Sort files</button>
       <button id="undo" type="button" disabled>Undo</button>
     </div>
+
     <div class="row checkbox-row">
       <label>
         <input id="remove-empty" type="checkbox" />
         Remove empty subfolders
       </label>
     </div>
+
     <div id="preview-box" hidden>
       <p id="preview-summary"></p>
       <ul id="preview-list"></ul>
       <p id="preview-note" class="hint"></p>
-      <button id="copy-preview" type="button" hidden>Copy list</button>
+      <button id="copy-preview" type="button" hidden>📋 Copy list</button>
     </div>
 
     <section>
