@@ -1,7 +1,7 @@
 [package]
 name = "minimal-sorter"
 version = "1.0.0"
-description = "Minimal file sorter: moves files into folders by extension"
+description = "Minimal Sorter: moves files into folders by extension"
 edition = "2021"
 
 [lib]

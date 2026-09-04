@@ -1,4 +1,4 @@
-# minimal-sorter
+# Minimal Sorter
 
 A minimal Windows app that sorts the loose files in a folder into subfolders
 based on file type. Built with Rust and Tauri — a single small executable, no

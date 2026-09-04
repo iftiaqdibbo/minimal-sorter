@@ -10,7 +10,7 @@
     "withGlobalTauri": true,
     "windows": [
       {
-        "title": "File Sorter",
+        "title": "Minimal Sorter",
         "width": 480,
         "height": 600,
         "resizable": false,
